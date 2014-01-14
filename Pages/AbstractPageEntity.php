@@ -2,8 +2,18 @@
 
 namespace Oro\Bundle\TestFrameworkBundle\Pages;
 
-abstract class AbstractEntity extends Page
+/**
+ * Class AbstractPageEntity
+ *
+ * @package Oro\Bundle\TestFrameworkBundle\Pages
+ * {@inheritdoc}
+ */
+abstract class AbstractPageEntity extends AbstractPage
 {
+    /** @var  \PHPUnit_Extensions_Selenium2TestCase_Element */
+    protected $owner;
+    /** @var  \PHPUnit_Extensions_Selenium2TestCase_Element */
+    protected $tags;
     /**
      * Save entity
      *
@@ -11,7 +21,7 @@ abstract class AbstractEntity extends Page
      */
     public function save()
     {
-        $this->byXPath("//button[normalize-space(.) = 'Save and Close']")->click();
+        $this->test->byXpath("//button[normalize-space(.) = 'Save and Close']")->click();
         sleep(1);
         $this->waitPageToLoad();
         $this->waitForAjax();
@@ -19,15 +29,25 @@ abstract class AbstractEntity extends Page
         return $this;
     }
 
+    /**
+     * Return to grid from entity view page
+     *
+     * @return $this
+     */
     public function toGrid()
     {
-        $this->byXpath("//div[@class='customer-content pull-left']/div[1]//a")->click();
+        $this->test->byXpath("//div[@class='customer-content pull-left']/div[1]//a")->click();
         $this->waitPageToLoad();
         $this->waitForAjax();
 
         return $this;
     }
 
+    /**
+     * @param bool $redirect
+     *
+     * @return mixed
+     */
     public function close($redirect = false)
     {
         $class = get_class($this);
@@ -40,10 +60,18 @@ abstract class AbstractEntity extends Page
         return new $class($this->test, $redirect);
     }
 
+    /**
+     * Verify tag
+     *
+     * @param $tag
+     *
+     * @return $this
+     * @throws \Exception
+     */
     public function verifyTag($tag)
     {
         if ($this->isElementPresent("//div[@id='s2id_orocrm_contact_form_tags_autocomplete']")) {
-            $tagsPath = $this->byXpath("//div[@id='s2id_orocrm_contact_form_tags_autocomplete']//input");
+            $tagsPath = $this->test->byXpath("//div[@id='s2id_orocrm_contact_form_tags_autocomplete']//input");
             $tagsPath->click();
             $tagsPath->value(substr($tag, 0, (strlen($tag)-1)));
             $this->waitForAjax();
@@ -66,6 +94,8 @@ abstract class AbstractEntity extends Page
     }
 
     /**
+     * Set tag
+     *
      * @param $tag
      * @return $this
      * @throws \Exception
@@ -73,7 +103,7 @@ abstract class AbstractEntity extends Page
     public function setTag($tag)
     {
         if ($this->isElementPresent("//div[@id='s2id_orocrm_contact_form_tags_autocomplete']")) {
-            $tagsPath = $this->byXpath("//div[@id='s2id_orocrm_contact_form_tags_autocomplete']//input");
+            $tagsPath = $this->test->byXpath("//div[@id='s2id_orocrm_contact_form_tags_autocomplete']//input");
             $tagsPath->click();
             $tagsPath->value($tag);
             $this->waitForAjax();
@@ -81,7 +111,7 @@ abstract class AbstractEntity extends Page
                 "//div[@id='select2-drop']//div[contains(., '{$tag}')]",
                 "Tag's autocoplete doesn't return entity"
             );
-            $this->byXpath("//div[@id='select2-drop']//div[contains(., '{$tag}')]")->click();
+            $this->test->byXpath("//div[@id='select2-drop']//div[contains(., '{$tag}')]")->click();
 
             return $this;
         } else {

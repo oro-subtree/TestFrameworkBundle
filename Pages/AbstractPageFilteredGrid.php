@@ -2,7 +2,13 @@
 
 namespace Oro\Bundle\TestFrameworkBundle\Pages;
 
-class PageFilteredGrid extends PageGrid
+/**
+ * Class AbstractPageFilteredGrid
+ *
+ * @package Oro\Bundle\TestFrameworkBundle\Pages
+ * {@inheritdoc}
+ */
+abstract class AbstractPageFilteredGrid extends AbstractPageGrid
 {
     /**
      * Remove filter
@@ -12,7 +18,7 @@ class PageFilteredGrid extends PageGrid
      */
     public function removeFilter($filterName)
     {
-        $this->byXPath(
+        $this->test->byXPath(
             "{$this->filtersPath}//div[contains(@class, 'filter-box')]//div[contains(@class, 'filter-item')]"
             . "[button[contains(.,'{$filterName}')]]/a[contains(., 'Close')]"
         )->click();
@@ -28,12 +34,12 @@ class PageFilteredGrid extends PageGrid
      */
     public function addFilter($filterName)
     {
-        $addFilter = $this->byXPath(
+        $addFilter = $this->test->byXPath(
             "{$this->filtersPath}//div[contains(@class, 'filter-box')]//button[contains(.,'Manage filters')]"
         );
         //expand filter list
         $addFilter->click();
-        $filter = $this->byXPath(
+        $filter = $this->test->byXPath(
             "{$this->filtersPath}//input[@title[normalize-space(.)='{$filterName}']]" .
             "[@name='multiselect_add-filter-select']"
         );
@@ -57,16 +63,16 @@ class PageFilteredGrid extends PageGrid
      */
     public function filterBy($filterName, $value = '', $condition = '')
     {
-        $this->byXPath(
+        $this->test->byXPath(
             "{$this->filtersPath}//div[contains(@class, 'filter-box')]//div[contains(@class, 'filter-item')]"
             . "/button[contains(.,'{$filterName}')]"
         )->click();
 
-        $criteria = $this->byXPath(
+        $criteria = $this->test->byXPath(
             "{$this->filtersPath}//div[contains(@class, 'filter-box')]//div[contains(@class, 'filter-item')]"
             . "[button[contains(.,'{$filterName}')]]/div[contains(@class, 'filter-criteria')]"
         );
-        $input = $criteria->element($this->using('xpath')->value("div/div/div/input[@name='value']"));
+        $input = $criteria->element($this->test->using('xpath')->value("div/div/div/input[@name='value']"));
 
         $input->clear();
         $input->value($value);
@@ -74,12 +80,14 @@ class PageFilteredGrid extends PageGrid
         //select criteria
         if ($condition != '') {
             //expand condition list
-            $criteria->element($this->using('xpath')->value("div/div/div/button[@class ='btn dropdown-toggle']"))
+            $criteria->element($this->test->using('xpath')->value("div/div/div/button[@class ='btn dropdown-toggle']"))
                 ->click();
 
-            $criteria->element($this->using('xpath')->value("div/div/div/ul/li/a[text()='{$condition}']"))->click();
+            $criteria->element($this->test->using('xpath')->value("div/div/div/ul/li/a[text()='{$condition}']"))
+                ->click();
         }
-        $criteria->element($this->using('xpath')->value("div/button[contains(@class, 'filter-update')]"))->click();
+        $criteria->element($this->test->using('xpath')->value("div/button[contains(@class, 'filter-update')]"))
+            ->click();
         $this->waitForAjax();
         return $this;
     }

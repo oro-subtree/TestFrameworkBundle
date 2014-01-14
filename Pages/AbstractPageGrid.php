@@ -4,12 +4,26 @@ namespace Oro\Bundle\TestFrameworkBundle\Pages;
 
 use PHPUnit_Framework_Assert;
 
-class PageGrid extends Page
+/**
+ * Class AbstractPageGrid
+ *
+ * @package Oro\Bundle\TestFrameworkBundle\Pages
+ * {@inheritdoc}
+ */
+abstract class AbstractPageGrid extends AbstractPage
 {
 
     protected $gridPath = '';
 
     protected $filtersPath = '';
+
+
+    /**
+     * @param array $entityData
+     *
+     * @return mixed
+     */
+    abstract public function open($entityData = array());
 
     /**
      * Select random entity from current page
@@ -21,8 +35,10 @@ class PageGrid extends Page
     {
         $entityId = rand(1, $pageSize);
 
-        $entity = $this->elements($this->using('xpath')->value("{$this->gridPath}//table/tbody/tr[{$entityId}]/td"));
-        $headers = $this->elements($this->using('xpath')->value("{$this->gridPath}//table/thead/tr/th"));
+        $entity = $this->test
+            ->elements($this->test->using('xpath')->value("{$this->gridPath}//table/tbody/tr[{$entityId}]/td"));
+        $headers = $this->test
+            ->elements($this->test->using('xpath')->value("{$this->gridPath}//table/thead/tr/th"));
 
         $entityData = array();
         for ($i=0; $i< count($headers); $i++) {
@@ -39,8 +55,8 @@ class PageGrid extends Page
      */
     public function changePage($page = 1)
     {
-        $pager = $this->byXPath("{$this->filtersPath}//div[contains(@class,'pagination')]/ul//input");
-        $pagerLabel = $this->byXPath(
+        $pager = $this->test->byXPath("{$this->filtersPath}//div[contains(@class,'pagination')]/ul//input");
+        $pagerLabel = $this->test->byXPath(
             "{$this->filtersPath}//div[contains(@class,'pagination')]/label[@class = 'dib' and text() = 'Page:']"
         );
         //set focus
@@ -49,7 +65,7 @@ class PageGrid extends Page
         $this->clearInput($pager);
         $pager->value($page);
         //simulate lost focus
-        $this->keysSpecial('enter');
+        $this->test->keysSpecial('enter');
         $this->waitForAjax();
         $pagerLabel->click();
         $this->waitForAjax();
@@ -63,7 +79,7 @@ class PageGrid extends Page
      */
     public function nextPage()
     {
-        $this->byXPath("{$this->gridPath}//div[contains(@class,'pagination')]//a[contains(.,'Next')]")->click();
+        $this->test->byXPath("{$this->gridPath}//div[contains(@class,'pagination')]//a[contains(.,'Next')]")->click();
         $this->waitForAjax();
         return $this;
     }
@@ -75,7 +91,7 @@ class PageGrid extends Page
      */
     public function previousPage()
     {
-        $this->byXPath("{$this->gridPath}//div[contains(@class,'pagination')]//a[contains(.,'Prev')]")->click();
+        $this->test->byXPath("{$this->gridPath}//div[contains(@class,'pagination')]//a[contains(.,'Prev')]")->click();
         $this->waitForAjax();
     }
 
@@ -86,7 +102,7 @@ class PageGrid extends Page
      */
     public function getCurrentPageNumber()
     {
-        return intval($this->byXPath("{$this->gridPath}//div[contains(@class,'pagination')]/ul//input")->value());
+        return intval($this->test->byXPath("{$this->gridPath}//div[contains(@class,'pagination')]/ul//input")->value());
     }
 
     /**
@@ -96,7 +112,7 @@ class PageGrid extends Page
      */
     public function getPagesCount()
     {
-        $pager = $this->byXPath("{$this->gridPath}//div[contains(@class,'pagination')]//label[@class='dib'][2]")
+        $pager = $this->test->byXPath("{$this->gridPath}//div[contains(@class,'pagination')]//label[@class='dib'][2]")
             ->text();
         preg_match('/of\s+(\d+)\s+\|\s+(\d+)\s+records/i', $pager, $result);
         return intval($result[1]);
@@ -109,7 +125,7 @@ class PageGrid extends Page
      */
     public function getRowsCount()
     {
-        $pager = $this->byXPath("{$this->gridPath}//div[contains(@class,'pagination')]//label[@class='dib'][2]")
+        $pager = $this->test->byXPath("{$this->gridPath}//div[contains(@class,'pagination')]//label[@class='dib'][2]")
             ->text();
         preg_match('/of\s+(\d+)\s+\|\s+(\d+)\s+records/i', $pager, $result);
         return intval($result[2]);
@@ -124,9 +140,11 @@ class PageGrid extends Page
     public function getRows($id = null)
     {
         if (is_null($id)) {
-            $records = $this->elements($this->using('xpath')->value("{$this->gridPath}//table/tbody/tr"));
+            $records = $this->test
+                ->elements($this->test->using('xpath')->value("{$this->gridPath}//table/tbody/tr"));
         } else {
-            $records = $this->elements($this->using('xpath')->value("{$this->gridPath}//table/tbody/tr[{$id}]"));
+            $records = $this->test
+                ->elements($this->test->using('xpath')->value("{$this->gridPath}//table/tbody/tr[{$id}]"));
         }
 
         return $records;
@@ -155,7 +173,7 @@ class PageGrid extends Page
      * Verify entity exist on the current page
      *
      * @param array $entityData
-     * @return bool
+     * @return \PHPUnit_Extensions_Selenium2TestCase_Element
      */
     public function getEntity($entityData)
     {
@@ -167,17 +185,24 @@ class PageGrid extends Page
             $xpath .=  "td[contains(.,'{$entityField}')]";
         }
         $xpath = "{$this->gridPath}//table/tbody/tr[{$xpath}]";
-        return $this->byXPath($xpath);
+        return $this->test->byXPath($xpath);
     }
 
-    public function deleteEntity($entityData = array())
+    /**
+     * @param array  $entityData
+     * @param string $actionName Default is Delete
+     *
+     * @return $this
+     */
+    public function deleteEntity($entityData = array(), $actionName = 'Delete')
     {
-        $entity = $this->getEntity($entityData, $name = 'Delete');
-        $entity->element($this->using('xpath')->value("td[@class = 'action-cell']//a[contains(., '...')]"))
+        $entity = $this->getEntity($entityData);
+        $entity->element($this->test->using('xpath')->value("td[@class = 'action-cell']//a[contains(., '...')]"))
             ->click();
-        $entity->element($this->using('xpath')->value("td[@class = 'action-cell']//a[contains(., '{$name}')]"))
-            ->click();
-        $this->byXPath("//div[div[contains(., 'Delete Confirmation')]]//a[text()='Yes, Delete']")->click();
+        $entity->element(
+            $this->test->using('xpath')->value("td[@class = 'action-cell']//a[contains(., '{$actionName}')]")
+        )->click();
+        $this->test->byXPath("//div[div[contains(., 'Delete Confirmation')]]//a[text()='Yes, Delete']")->click();
 
         $this->waitPageToLoad();
         $this->waitForAjax();
@@ -191,8 +216,8 @@ class PageGrid extends Page
      */
     public function getHeaders()
     {
-        $records = $this->elements(
-            $this->using('xpath')
+        $records = $this->test->elements(
+            $this->test->using('xpath')
                 ->value("{$this->gridPath}//table/thead/tr/th[not(contains(@style, 'display: none;'))]")
         );
         return $records;
@@ -210,6 +235,7 @@ class PageGrid extends Page
         $i = 0;
         $found = 0;
         foreach ($records as $column) {
+            /** @var \PHPUnit_Extensions_Selenium2TestCase_Element $column */
             $name = $column->text();
             $i++;
             if (strtoupper($headerName) == strtoupper($name)) {
@@ -228,12 +254,13 @@ class PageGrid extends Page
      */
     public function getColumn($columnId)
     {
-        $columnData = $this->elements(
-            $this->using('xpath')
+        $columnData = $this->test->elements(
+            $this->test->using('xpath')
                 ->value("{$this->gridPath}//table/tbody/tr/td[not(contains(@style, 'display: none;'))][{$columnId}]")
         );
         $rowData = array();
         foreach ($columnData as $value) {
+            /** @var \PHPUnit_Extensions_Selenium2TestCase_Element $value */
             $rowData[] = $value->text();
         }
         return $rowData;
@@ -259,10 +286,10 @@ class PageGrid extends Page
         }
 
         //get current sort order status
-        $current = $this->byXPath("{$this->gridPath}//table/thead/tr/th[a[contains(., '{$columnName}')]]")
+        $current = $this->test->byXPath("{$this->gridPath}//table/thead/tr/th[a[contains(., '{$columnName}')]]")
             ->attribute('class');
         if ($current != $orderFull || $order == '') {
-            $this->byXPath("{$this->gridPath}//table/thead/tr/th/a[contains(., '{$columnName}')]")->click();
+            $this->test->byXPath("{$this->gridPath}//table/thead/tr/th/a[contains(., '{$columnName}')]")->click();
             $this->waitForAjax();
             if ($order != '') {
                 return $this->sortBy($columnName, $order);
@@ -279,9 +306,9 @@ class PageGrid extends Page
      */
     public function changePageSize($pageSize)
     {
-        $this->byXPath("{$this->gridPath}//div[@class='page-size pull-right form-horizontal']//button")->click();
+        $this->test->byXPath("{$this->gridPath}//div[@class='page-size pull-right form-horizontal']//button")->click();
         if (is_integer($pageSize)) {
-            $this->byXPath(
+            $this->test->byXPath(
                 "{$this->gridPath}//div[@class='page-size pull-right form-horizontal']" .
                 "//ul[contains(@class,'dropdown-menu')]/li/a[text() = '{$pageSize}']"
             )->click();
@@ -297,13 +324,18 @@ class PageGrid extends Page
             }
             $xpath = "{$this->gridPath}//div[@class='page-size pull-right form-horizontal']" .
                 "//ul[contains(@class,'dropdown-menu')]/li[{$command}]/a";
-            $this->byXPath($xpath)->click();
+            $this->test->byXPath($xpath)->click();
         }
 
         $this->waitForAjax();
         return $this;
     }
 
+    /**
+     * @param string $message Message to verify
+     *
+     * @return $this
+     */
     public function assertNoDataMessage($message)
     {
         PHPUnit_Framework_Assert::assertTrue(

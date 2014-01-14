@@ -2,25 +2,15 @@
 
 namespace Oro\Bundle\TestFrameworkBundle\Pages;
 
-use Oro\Bundle\TestFrameworkBundle\Pages\Objects\Login;
+use Oro\Bundle\UserBundle\Tests\Selenium\Pages\Login;
 use PHPUnit_Framework_Assert;
-use Oro\Bundle\TestFrameworkBundle\Pages\Objects\Users;
-use Oro\Bundle\TestFrameworkBundle\Pages\Objects\Roles;
-use Oro\Bundle\TestFrameworkBundle\Pages\Objects\Groups;
-use Oro\Bundle\TestFrameworkBundle\Pages\Objects\Accounts;
-use Oro\Bundle\TestFrameworkBundle\Pages\Objects\Contacts;
-use Oro\Bundle\TestFrameworkBundle\Pages\Objects\Navigation;
 
 /**
- * @method Users openUsers()
- * @method Roles openRoles()
- * @method Groups openGroups()
- * @method Accounts openAccounts()
- * @method Contacts openContacts()
- * @method Navigation openNavigation()
- * @method Navigation tab()
+ * Class AbstractPage
+ *
+ * @package Oro\Bundle\TestFrameworkBundle\Pages
  */
-class Page
+abstract class AbstractPage
 {
     protected $redirectUrl = null;
 
@@ -35,13 +25,21 @@ class Page
     {
         $this->test = $testCase;
         // @codingStandardsIgnoreStart
-        $this->currentWindow()->size(array('width' => intval(viewportWIDTH), 'height' => intval(viewportHEIGHT)));
+        $this->test->currentWindow()->size(array('width' => intval(viewportWIDTH), 'height' => intval(viewportHEIGHT)));
         // @codingStandardsIgnoreУтв
         if (!is_null($this->redirectUrl) && $redirect) {
             $this->test->url($this->redirectUrl);
             $this->waitPageToLoad();
             $this->waitForAjax();
         }
+    }
+
+    /**
+     * @return \PHPUnit_Extensions_Selenium2TestCase
+     */
+    public function getTest()
+    {
+        return $this->test;
     }
 
     /**
@@ -52,17 +50,22 @@ class Page
     public function __call($name, $arguments)
     {
         if (preg_match('/open(.+)/i', "{$name}", $result) > 0) {
-            $class = __NAMESPACE__ . '\\Objects\\' . $result[1];
+            if (isset($arguments[0])) {
+                //get name space from arguments
+                $namespace = $arguments[0];
+                $namespace .= '\\Tests\Selenium';
+                unset($arguments[0]);
+                $arguments = array_values($arguments);
+            } else {
+                //get called class namespace
+                $namespace = implode('\\', array_slice(explode('\\', get_class($this->test)), 0, -1));
+            }
+            $class = $namespace . '\\Pages\\' . $result[1];
             $class = new \ReflectionClass($class);
             return $class->newInstanceArgs(array_merge(array($this->test), $arguments));
         }
 
-        if (method_exists($this, $name)) {
-            $result = call_user_func_array(array($this, $name), $arguments);
-        } else {
-            $result = call_user_func_array(array($this->test, $name), $arguments);
-        }
-        return $result;
+        return null;
     }
 
     /**
@@ -71,7 +74,7 @@ class Page
     public function waitPageToLoad()
     {
         $this->test->waitUntil(
-            function ($testCase) {
+            function (\PHPUnit_Extensions_Selenium2TestCase $testCase) {
                 $status = $testCase->execute(
                     array('script' => "return 'complete' == document['readyState']", 'args' => array())
                 );
@@ -85,7 +88,7 @@ class Page
         );
 
         $this->test->waitUntil(
-            function ($testCase) {
+            function (\PHPUnit_Extensions_Selenium2TestCase $testCase) {
                 $status = $testCase->execute(
                     array(
                         'script' =>
@@ -103,7 +106,7 @@ class Page
             intval(MAX_EXECUTION_TIME)
         );
 
-        $this->timeouts()->implicitWait(intval(TIME_OUT));
+        $this->test->timeouts()->implicitWait(intval(TIME_OUT));
     }
 
     /**
@@ -112,7 +115,7 @@ class Page
     public function waitForAjax()
     {
         $this->test->waitUntil(
-            function ($testCase) {
+            function (\PHPUnit_Extensions_Selenium2TestCase $testCase) {
                 $status = $testCase->execute(
                     array(
                         'script' => "return typeof(jQuery.isActive) == 'undefined' || !jQuery.isActive()",
@@ -128,9 +131,14 @@ class Page
             intval(MAX_EXECUTION_TIME)
         );
 
-        $this->timeouts()->implicitWait(intval(TIME_OUT));
+        $this->test->timeouts()->implicitWait(intval(TIME_OUT));
     }
 
+    /**
+     * Reload current page specified in redirect URL
+     *
+     * @return $this
+     */
     public function refresh()
     {
         if (!is_null($this->redirectUrl)) {
@@ -151,14 +159,14 @@ class Page
      */
     public function isElementPresent($locator, $strategy = 'xpath')
     {
-        $result = $this->elements($this->using($strategy)->value($locator));
+        $result = $this->test->elements($this->test->using($strategy)->value($locator));
         return !empty($result);
     }
 
     /**
      * @param $title
      * @param string $message
-     * @return $this
+     * @return mixed
      */
     public function assertTitle($title, $message = '')
     {
@@ -183,7 +191,7 @@ class Page
             ),
             'Flash message is missing'
         );
-        $actualResult = $this->byXPath(
+        $actualResult = $this->test->byXPath(
             "//div[@id = 'flash-messages']//div[@class = 'message']"
         )->attribute('innerHTML');
 
@@ -202,7 +210,7 @@ class Page
             $this->isElementPresent("//div[contains(@class,'alert') and not(contains(@class, 'alert-empty'))]"),
             'Flash message is missing'
         );
-        $actualResult = $this->byXPath(
+        $actualResult = $this->test->byXPath(
             "//div[contains(@class,'alert') and not(contains(@class, 'alert-empty'))]/div"
         )->text();
 
@@ -247,14 +255,17 @@ class Page
         $element->value('');
         $tx = $element->value();
         while ($tx!="") {
-            $this->keysSpecial('backspace');
+            $this->test->keysSpecial('backspace');
             $tx = $element->value();
         }
     }
 
+    /**
+     * @return \Oro\Bundle\UserBundle\Tests\Selenium\Pages\Login
+     */
     public function logout()
     {
-        $this->url('/user/logout');
+        $this->test->url('/user/logout');
         return new Login($this->test);
     }
 }
