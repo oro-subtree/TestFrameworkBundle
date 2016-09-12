@@ -1,4 +1,4 @@
-datagrid:
+datagrids:
     items-grid:
         source:
             type: orm
